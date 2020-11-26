@@ -1,9 +1,3 @@
-const bcrypt = require('bcrypt');
-
-async function run () {
-    const salt = await bcrypt.genSalt();
-    const hashed = await bcrypt.hash('123456', salt);
-    console.log(hashed);
+module.exports = function (number) {
+   (number >= 0) ? number : -number
 }
-
-run();

@@ -1,59 +1,53 @@
-const mongoose = require('mongoose');
-const Joi = require('joi');
+const asyncMiddleware = require('../middleware/async');
+const Validator = require('../middleware/validate');
+const validateObjectId = require('../middleware/validateObjectId');
+const isAdmin = require('../middleware/admin');
 const { Genre, validate } = require('../models/genre');
 const auth = require('../middleware/auth');
+const mongoose = require('mongoose');
+const Joi = require('joi');
 const express = require('express');
 const router = express.Router();
 
-router.delete('/:id', auth, async (req, res) => {
-  try {
+router.delete('/:id', [auth, isAdmin, validateObjectId], asyncMiddleware(async (req, res) => {
+  
     const genre = await Genre.findByIdAndRemove(req.params.id);
     if (!genre) return res.status(404).send('Id not found');
     res.send(genre);
-  }
-  catch (err) {
-    for (i in err.error) {
-      console.log(err.error[i]);
-    }
-  }
-});
+}));
 
 
-router.put('/:id', auth, async (req, res) => {
-   const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-
+router.put('/:id', [auth, Validator(validate), isAdmin, validateObjectId], asyncMiddleware(async(req, res) => {
+  
   const genre = await Genre.findByIdAndUpdate(req.params.id, { genre: req.body.genre }, { new: true });
   if (!genre) return res.status(404).send('Invalid ID');
   res.send(genre);
 
-});
+}));
 
-router.post('/', auth, async (req, res) => {
-  const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+router.post('/', [auth, Validator(validate), isAdmin, validateObjectId], asyncMiddleware(async(req, res) => {
 
   let genre = new Genre ({ genre: req.body.genre });
-  genre = await genre.save();
+ await genre.save();
   res.send(genre);
-});
+}));
 
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateObjectId, asyncMiddleware(async(req, res) => {
   const genre = await Genre.findById(req.params.id);
   if (!genre) return res.status(400).send('Invalid ID');
   res.send(genre);
 
-})
+}));
 
-router.get('/', async (req, res) => {
-  throw new Error('Something happend');
+router.get('/', asyncMiddleware(async(req, res) => {
+  
   const genre = await Genre.find().sort('genre');
 
   if (!genre) return res.status(404).send('Bad request, Please check url');
   res.send(genre);
 
-});
+}));
 
 
 

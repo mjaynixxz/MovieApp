@@ -1,6 +1,10 @@
+const asyncMiddleware = require('../middleware/async')
+const auth = require('../middleware/auth');
+const Validator = require('../middleware/validate');
+const validateObjectId = require('../middleware/validateObjectId');
+const isAdmin = require('../middleware/admin');
 const Fawn = require('fawn');
 const { Rental, validate } = require('../models/rental');
-const auth = require('../middleware/auth');
 const {  Movie } = require('../models/movie');
 const { Customer } = require('../models/customer');
 const mongoose = require('mongoose');
@@ -12,24 +16,20 @@ Fawn.init(mongoose);
 
 
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', [auth, isAdmin, validateObjectId] , asyncMiddleware(async(req, res) => {
     const rental = await Rental.findByIdAndRemove(req.params.id);
     if (!rental) return res.status(404).send('Not found');
     res.send(rental);
-});
+}));
 
 
-router.put('/', auth, async (req, res) => {
-
-try {
-    const { error } = validate(req.body);
-if (error) return res.status(404).send(error.details[0].message);
+router.put('/:id', [auth, Validator(validate), isAdmin, validateObjectId], asyncMiddleware(async (req, res) => {
 
 const customer = await Customer.findById(req.body.customerId);
-if (!customer) return res.status(404).send('Customer with the given Id not found');
+if (!customer) return res.status(400).send('Invalid Customer');
 
 const movie = await Movie.findById(req.body.movieId);
-if (!movie) return res.status(404).send('Movie with the gicen Id not found');
+if (!movie) return res.status(400).send('Invalid Movie');
 
 
 if (movie.numberInStock === 0) return res.status(400).send('Movie not in stock');
@@ -42,24 +42,16 @@ if (movie.numberInStock === 0) return res.status(400).send('Movie not in stock')
 
     res.send(rental);
 
-}
 
-catch (ex) {
-    console.log(ex.toString());
-}
-});
+}));
 
-router.post('/', auth, async (req, res) => {
-
-try {
-    const { error } = validate(req.body);
-if (error) return res.status(404).send(error.details[0].message);
+router.post('/', [auth, isAdmin, validateObjectId], asyncMiddleware(async(req, res) => {
 
 const customer = await Customer.findById(req.body.customerId);
-if (!customer) return res.status(404).send('Customer with the given Id not found');
+if (!customer) return res.status(400).send('Invalid Customer');
 
 const movie = await Movie.findById(req.body.movieId);
-if (!movie) return res.status(404).send('Movie with the gicen Id not found');
+if (!movie) return res.status(400).send('Invalid Customer');
 
 
 if (movie.numberInStock === 0) return res.status(400).send('Movie not in stock');
@@ -92,26 +84,19 @@ if (movie.numberInStock === 0) return res.status(400).send('Movie not in stock')
     catch (ex) {
         return res.status(500).send('Something went wrong');
     }
+}))
 
-}
-
-catch (ex) {
-    console.log(ex.toString());
-}
-});
-
-
-router.get('/:id', async (req, res) => {
+router.get('/:id', [auth, isAdmin, validateObjectId], asyncMiddleware(async(req, res) => {
     const rental = await Rental.findById(req.params.id);
 
     if (!rental) return res.status(404).send('The rental with the given id was not found');
     res.send(rental);
-});
+}));
 
-router.get('/', async (req, res) => {
+router.get('/', asyncMiddleware(async(req, res) => {
    const rental = await Rental.find().sort('-dateOut');
    res.send(rental);
-});
+}));
 
 
 

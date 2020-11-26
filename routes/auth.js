@@ -6,21 +6,19 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const {User, generateAuth, userSchema} = require('../models/user');
 const auth = require('../middleware/auth');
-const admin = require('../middleware/admin');
+const asyncMiddleware = require('../middleware/async');
+const Validator = require('../middleware/validate');
 const express = require('express');
 const router = express.Router();
 
-router.get('/me', auth, async(req, res) => {
+router.get('/me', auth, asyncMiddleware(async(req, res) => {
     const user = await User.findById(req.user._id).select('-password');
-    console.log(user);
-    // res.send(user);
-});
+    
+    res.send(user);
+}));
 
-router.post('/', async (req, res) => {
+router.post('/', Validator(validate), asyncMiddleware(async (req, res) => {
 
-    const {error} = validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
-   
     let user = await User.findOne({email: req.body.email});
     if (!user) return res.status(400).send('Invalid email or password');
     
@@ -31,7 +29,7 @@ router.post('/', async (req, res) => {
 
     res.header('x-auth-token', token).send('Logged in successfully');
 
-});
+}));
 
 
 function validate(req) {
